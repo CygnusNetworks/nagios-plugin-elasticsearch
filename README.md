@@ -7,7 +7,7 @@ Nagios.
 
 [ElasticSearch]: http://www.elasticsearch.org/
 
-This project is forked from [anchor/nagios-plugin-elasticsearch], rewritten to use [nagiosplugin] instead of pynagioscheck and packaged for debian wheezy. 
+This project is forked from [anchor/nagios-plugin-elasticsearch], rewritten to use [nagiosplugin] instead of pynagioscheck and packaged for Debian.
 
 [anchor/nagios-plugin-elasticsearch]: https://github.com/anchor/nagios-plugin-elasticsearch
 
