@@ -3,6 +3,8 @@
 
 import argparse
 import json
+import ssl
+from base64 import b64encode
 import nagiosplugin
 import nagiosplugin.state
 import urllib2
@@ -73,16 +75,30 @@ class ESNode(object):
 
 
 class ElasticSearchAPI(object):
-	def __init__(self, host, port, prefix):
+	def __init__(self, host, port, prefix, scheme = "http", username = None, password = None, cert = None, key = None, insecure = False, ca = False):
 		"""
 		Initialize ElasticSearch API class
 		@param host: API host
 		@param port: API port
 		@param prefix: API URL Prefix
+		@param scheme: API scheme
+		@param username: API username
+		@param password: API password
+		@param cert: API certificate
+		@param key: API key
+		@param insecure: API verify
+		@param ca: API ca
 		"""
 		self.host = host
 		self.port = port
 		self.prefix = prefix
+		self.scheme = scheme
+		self.username = username
+		self.password = password
+		self.cert = cert
+		self.key = key
+		self.insecure = insecure
+		self.ca = ca
 
 		self.version = None
 
@@ -110,13 +126,27 @@ class ElasticSearchAPI(object):
 		return self.get_api_data('_nodes/_local/stats')
 
 	def get_api_data(self, suffix):
-		uri = (r'http://%s:%d/%s%s' % (self.host, self.port, self.prefix, suffix))
-		return self.__get_json(uri)
+		uri = (r'%s://%s:%d/%s%s' %
+		      (self.scheme, self.host, self.port, self.prefix, suffix))
+		request = urllib2.Request(uri)
+		if self.username:
+			authheader = b64encode('%s:%s' % (self.username, self.password))
+			request.add_header("Authorization", "Basic %s" % authheader)
+		ctx = None
+		if self.scheme == "https":
+			if self.insecure:
+				ctx = ssl._create_unverified_context()
+			elif self.cert and self.key:
+				ctx = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+				ctx.load_cert_chain(self.cert, self.key)
+			else:
+				ctx = ssl.create_default_context()
+		return self.__get_json(request,ctx)
 
 	@staticmethod
-	def __get_json(uri):
+	def __get_json(request, ctx):
 		try:
-			f = urllib2.urlopen(uri)
+			f = urllib2.urlopen(request, context=ctx)
 		except urllib2.HTTPError as e:
 			raise RuntimeError('Elastic Search API Failure: %s' % str(e))
 		except urllib2.URLError as e:
@@ -215,13 +245,20 @@ class ElasticSearchCheck(nagiosplugin.Resource):
 		host = self.args.host
 		port = int(self.args.port)
 		prefix = self.args.prefix
+		scheme = self.args.scheme
+		username = self.args.username
+		password = self.args.password
+		cert = self.args.cert
+		key = self.args.key
+		insecure = self.args.insecure
+		ca = self.args.ca
 
 		failure_domain = []
 		if (isinstance(self.args.failure_domain, str) and
-					len(self.args.failure_domain) > 0):
+					self.args.failure_domain):
 			failure_domain.extend(self.args.failure_domain.split(","))
 
-		es_server = ElasticSearchAPI(host, port, prefix)
+		es_server = ElasticSearchAPI(host, port, prefix, scheme, username, password, cert, key, insecure, ca)
 
 		# Request cluster 'health'.  /_cluster/health is like a tl;dr for /_cluster/state (see below).  There is very little useful
 		# information here.  We are primarily interested in ES' cluster 'health colour':  a little rating ES gives itself to describe
@@ -235,7 +272,7 @@ class ElasticSearchCheck(nagiosplugin.Resource):
 		# Request a bunch of useful numbers that we export as perfdata. Details like the number of get, search, and indexing operations come from here.
 		es_stats = es_server.get_stats()
 
-		myid = es_stats['nodes'].keys()[0]
+		myid = list(es_stats['nodes'].keys())[0]
 
 		n_nodes = es_health['number_of_nodes']
 		n_dnodes = es_health['number_of_data_nodes']
@@ -301,7 +338,7 @@ class ElasticSearchCheck(nagiosplugin.Resource):
 			node_esid_map[node] = n
 			node_shard_map[node] = []
 
-			if len(failure_domain) > 0:
+			if failure_domain:
 				node_location_map[node] = tuple()
 				try:
 					node_location_map[node] = (tuple(map(lambda a: attrs[a], failure_domain)))
@@ -450,7 +487,7 @@ class ElasticSearchCheck(nagiosplugin.Resource):
 
 		# Collect replica location data
 		replica_loc = {}
-		if len(failure_domain) > 0:
+		if failure_domain:
 			for idx_name, idx in name_index_map.items():
 				replica_loc[idx_name] = {}
 
@@ -526,6 +563,21 @@ def main():
 	argp.add_argument('-m', '--master-nodes', type=int, help="Issue a warning if the number of master-eligible nodes in the cluster drops below this number. By default, do not monitor the number of nodes in the cluster.", default=None)
 
 	argp.add_argument('-p', '--port', type=int, help="TCP port to probe. The ElasticSearch API should be listening here. Defaults to 9200.", default=9200)
+
+	argp.add_argument('-s', '--scheme', type=str, help="URL scheme to use: http or https. Defaults to http.", default='http')
+
+	argp.add_argument('-U', '--username', type=str, help="Username for basic http authentication. Defaults to None.", default=None)
+
+	argp.add_argument('-P', '--password', type=str, help="Password for basic http authentication. Defaults to None.", default=None)
+
+	argp.add_argument('-c', '--cert', type=str, help="Path to certificate for user certificate authentication. Defaults to None.", default=None)
+
+	argp.add_argument('-a', '--ca', type=str, help="Path to certificate authority. Defaults to None i.e. only the system's CA bundle will be used.", default=None)
+
+	argp.add_argument('-k', '--key', type=str, help="Path to key for user certificate authentication. Defaults to None.", default=None)
+
+	argp.add_argument('-I', '--insecure', action='store_true', help="Insecure SSL connection."
+"Defaults to False.", default=False)
 
 	argp.add_argument('-r', '--prefix', help="Optional prefix (e.g. 'es') for the ElasticSearch API. Defaults to ''.", default='')
 	args = argp.parse_args()
