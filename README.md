@@ -40,45 +40,46 @@ colour'.  If our health colour concurs with ElasticSearch's health
 colour, then we can be reasonably sure we know what is wrong with the 
 cluster and may report that problem to the operator.
 
-[cluster-health]: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/cluster-health.html
+[cluster-health]: https://www.elastic.co/guide/en/elasticsearch/reference/current/cluster-health.html
 
 
 Usage:
 -----
 ```
-check_elasticsearch [options]
+usage: check_elasticsearch [-h] [-v] [-f FAILURE_DOMAIN] [-H HOST] [-m MASTER_NODES] [-p PORT] [-s SCHEME] [-U USERNAME] [-P PASSWORD] [-c CERT] [-a CA] [-k KEY] [-I] [-r PREFIX]
 
-Options:
-  --version             show program's version number and exit
+optional arguments:
   -h, --help            show this help message and exit
   -v, --verbose
-  -f FAILURE_DOMAIN, --failure-domain=FAILURE_DOMAIN
-                        A comma-separated list of ElasticSearch attributes
-                        that make up your cluster's failure domain[0].  This
-                        should be the same list of attributes that
-                        ElasticSearch's location-aware shard allocator has
-                        been configured with.  If this option is supplied,
-                        additional checks are carried out to ensure that
-                        primary and replica shards are not stored in the same
-                        failure domain.
-			[0]: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/modules-cluster.html
-  -H HOST, --host=HOST  Hostname or network address to probe.  The
-                        ElasticSearch API should be listening here.  Defaults
-                        to 'localhost'.
-  -m MASTER_NODES, --master-nodes=MASTER_NODES
-                        Issue a warning if the number of master-eligible nodes
-                        in the cluster drops below this number.  By default,
-                        do not monitor the number of nodes in the cluster.
-  -p PORT, --port=PORT  TCP port to probe.  The ElasticSearch API should be
-                        listening here.  Defaults to 9200.
-
+  -f FAILURE_DOMAIN, --failure-domain FAILURE_DOMAIN
+                        A comma-separated list of ElasticSearch attributes that make up your cluster's failure domain[0]. This should be the same list of attributes that ElasticSearch's
+                        location-aware shard allocator has been configured with. If this option is supplied, additional checks are carried out to ensure that primary and replica shards are
+                        not stored in the same failure domain. [0]: http://www.elasticsearch.org/guide/en/elasticsearch/reference/current/modules-cluster.html
+  -H HOST, --host HOST  Hostname or network address to probe. The ElasticSearch API should be listening here. Defaults to 'localhost'.
+  -m MASTER_NODES, --master-nodes MASTER_NODES
+                        Issue a warning if the number of master-eligible nodes in the cluster drops below this number. By default, do not monitor the number of nodes in the cluster.
+  -p PORT, --port PORT  TCP port to probe. The ElasticSearch API should be listening here. Defaults to 9200.
+  -s SCHEME, --scheme SCHEME
+                        URL scheme to use: http or https. Defaults to http.
+  -U USERNAME, --username USERNAME
+                        Username for basic http authentication. Defaults to None.
+  -P PASSWORD, --password PASSWORD
+                        Password for basic http authentication. Defaults to None.
+  -c CERT, --cert CERT  Path to certificate for user certificate authentication. Defaults to None.
+  -a CA, --ca CA        Path to certificate authority. Defaults to None i.e. only the system's CA bundle will be used.
+  -k KEY, --key KEY     Path to key for user certificate authentication. Defaults to None.
+  -I, --insecure        Insecure SSL connection.Defaults to False.
+  -r PREFIX, --prefix PREFIX
+                        Optional prefix (e.g. 'es') for the ElasticSearch API. Defaults to ''.
 ```
 
 Requirements
 ------------
 
-- Python 2.7
+- Python 3.7
 - [nagiosplugin][]
+- [requests][]
 
-[nagiosplugin]: https://projects.gocept.com/projects/nagiosplugin/wiki
+[nagiosplugin]: https://pypi.org/project/nagiosplugin/
+[requests]: https://pypi.org/project/requests/
 

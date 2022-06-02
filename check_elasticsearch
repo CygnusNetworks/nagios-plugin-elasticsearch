@@ -3,11 +3,12 @@
 
 import argparse
 import json
+from urllib.request import urlopen, Request
+from urllib.error import URLError, HTTPError
 import ssl
 from base64 import b64encode
 import nagiosplugin
 import nagiosplugin.state
-import urllib2
 
 
 SHARD_STATE = {'UNASSIGNED': 1,
@@ -128,9 +129,9 @@ class ElasticSearchAPI(object):
 	def get_api_data(self, suffix):
 		uri = (r'%s://%s:%d/%s%s' %
 		      (self.scheme, self.host, self.port, self.prefix, suffix))
-		request = urllib2.Request(uri)
+		request = Request(uri)
 		if self.username:
-			authheader = b64encode('%s:%s' % (self.username, self.password))
+			authheader = b64encode(('%s:%s' % (self.username, self.password)).encode('UTF-8')).decode('UTF-8')
 			request.add_header("Authorization", "Basic %s" % authheader)
 		ctx = None
 		if self.scheme == "https":
@@ -146,10 +147,10 @@ class ElasticSearchAPI(object):
 	@staticmethod
 	def __get_json(request, ctx):
 		try:
-			f = urllib2.urlopen(request, context=ctx)
-		except urllib2.HTTPError as e:
+			f = urlopen(request, context=ctx)
+		except HTTPError as e:
 			raise RuntimeError('Elastic Search API Failure: %s' % str(e))
-		except urllib2.URLError as e:
+		except URLError as e:
 			raise RuntimeError('Elastic Search API URLError: %s' % str(e))
 
 		body = f.read()
